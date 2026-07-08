@@ -15,17 +15,24 @@ const { data: manifest } = await useAsyncData(
 
 const lastRun = computed(() => {
   if (!manifest.value?.lastRun) return null
-  return new Date(manifest.value.lastRun).toLocaleDateString(undefined, {
+  return formatDate(manifest.value.lastRun)
+})
+
+// Oldest/newest ride dates, emitted by RideMap once the geojson loads.
+const range = ref<{ oldest: string, newest: string } | null>(null)
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
   })
-})
+}
 </script>
 
 <template>
   <div class="fixed inset-0">
-    <RideMap />
+    <RideMap @range="range = $event" />
 
     <UCard class="absolute top-4 left-4 z-10 backdrop-blur">
       <div class="flex items-center gap-2">
@@ -45,6 +52,23 @@ const lastRun = computed(() => {
           · updated {{ lastRun }}
         </template>
       </p>
+    </UCard>
+
+    <UCard
+      v-if="range"
+      class="absolute bottom-4 left-4 z-10 backdrop-blur"
+    >
+      <p class="text-xs font-medium text-muted">
+        Ride date
+      </p>
+      <div
+        class="mt-1.5 h-2 w-40 rounded"
+        :style="{ background: rideRampCss() }"
+      />
+      <div class="mt-1 flex justify-between gap-4 text-xs text-muted tabular-nums">
+        <span>{{ formatDate(range.oldest) }}</span>
+        <span>{{ formatDate(range.newest) }}</span>
+      </div>
     </UCard>
   </div>
 </template>
