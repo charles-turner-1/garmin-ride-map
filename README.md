@@ -1,5 +1,11 @@
 # garmin-ride-map
 
+> [!WARNING]
+> This was vibe coded. If you plan on using it, please don't blame me if this causes
+> literally anything at all bad to happen to you, your computer, or the secrecy of
+> your environment variables. AFAIK it's fine but I haven't bothered to read the code
+> yet. Maybe one day I will....
+
 A dead-simple personal map of every cycle ride from my Garmin history — drawn as
 overlapping translucent route lines (Strava-heatmap style) so I can see where
 I have and haven't been.
