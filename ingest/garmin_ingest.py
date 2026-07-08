@@ -172,7 +172,12 @@ def main() -> None:
                  "first, then put the value in ingest/.env (local) or a GitHub secret (CI). "
                  "See ingest/README.md.")
 
-    ride_types = {t.strip() for t in os.environ.get("RIDE_TYPES", "road_biking").split(",") if t.strip()}
+    # Garmin has no single "cycling" flag — every cycling subtype (road_biking,
+    # gravel_cycling, mountain_biking, virtual_ride, ...) shares parentTypeId 2.
+    # Match on the parent so we grab *any* cycling activity without maintaining a
+    # list. RIDE_TYPES (comma-separated typeKeys) can still narrow it if set.
+    ride_types = {t.strip() for t in os.environ.get("RIDE_TYPES", "").split(",") if t.strip()}
+    CYCLING_PARENT_TYPE_ID = 2
     since_years = int(os.environ.get("SINCE_YEARS", "4"))
     center = parse_center(os.environ.get("PRIVACY_CENTER"))
     radius_m = float(os.environ.get("PRIVACY_RADIUS_M", "500"))
@@ -186,7 +191,8 @@ def main() -> None:
 
     end = datetime.now(timezone.utc).date()
     start = end - timedelta(days=365 * since_years + 1)
-    print(f"Fetching {sorted(ride_types)} activities {start} .. {end}")
+    scope = ", ".join(sorted(ride_types)) if ride_types else "all cycling"
+    print(f"Fetching {scope} activities {start} .. {end}")
     activities = client.get_activities_by_date(start.isoformat(), end.isoformat())
     print(f"Garmin returned {len(activities)} activities in range")
 
@@ -196,7 +202,11 @@ def main() -> None:
         aid = str(activity.get("activityId"))
         if aid in processed:
             continue
-        if activity.get("activityType", {}).get("typeKey") not in ride_types:
+        act_type = activity.get("activityType", {})
+        if ride_types:
+            if act_type.get("typeKey") not in ride_types:
+                continue
+        elif act_type.get("parentTypeId") != CYCLING_PARENT_TYPE_ID:
             continue
 
         try:

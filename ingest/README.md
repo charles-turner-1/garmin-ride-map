@@ -44,7 +44,7 @@ fetch new rides. The first real run also drops the `demo-*` seed rides.
 | `PRIVACY_CENTER` | — | home point `lat,lng`; points within the radius are dropped |
 | `PRIVACY_RADIUS_M` | `500` | privacy clip radius in metres |
 | `PRIVACY_JITTER_M` | `200` | max random offset applied to exposed endpoints |
-| `RIDE_TYPES` | `road_biking` | comma-separated Garmin activity typeKeys to include |
+| `RIDE_TYPES` | _(blank)_ | comma-separated typeKeys to include; blank = any cycling activity (matched by parent type) |
 | `SINCE_YEARS` | `4` | how many years of history to pull |
 | `SIMPLIFY_TOLERANCE` | `0.0001` | Douglas–Peucker tolerance in degrees (~11 m) |
 

@@ -67,8 +67,9 @@ python garmin_ingest.py              # pulls your rides; replaces the demo data
 Commit the updated `public/data/` and push. After that the scheduled `ingest`
 workflow keeps it fresh daily using the repo secrets.
 
-Defaults: road rides only, last 4 years, 500 m privacy radius. Tune via env vars
-(see [`ingest/README.md`](ingest/README.md)).
+Defaults: all cycling activities, last 4 years, 500 m privacy radius. Tune via
+env vars — e.g. set `RIDE_TYPES=road_biking` to narrow (see
+[`ingest/README.md`](ingest/README.md)).
 
 ## Notes
 
