@@ -1,0 +1,47 @@
+name: deploy-pages
+
+# Reusable: builds the static site and publishes it to GitHub Pages.
+# Called by deploy.yml (on push) and ingest.yml (after new data is committed).
+on:
+  workflow_call:
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Generate static site
+        run: pnpm generate
+        env:
+          # Project Pages serve from /<repo>/ — must match the repo name.
+          NUXT_APP_BASE_URL: /garmin-ride-map/
+          NITRO_PRESET: github_pages
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .output/public
+
+      - name: Deploy to Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

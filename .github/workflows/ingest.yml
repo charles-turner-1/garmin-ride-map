@@ -1,0 +1,69 @@
+name: ingest
+
+# Pull new Garmin rides on a schedule, commit the data, then redeploy.
+# A push made by the default GITHUB_TOKEN does not trigger deploy.yml, so this
+# workflow deploys itself after committing.
+on:
+  schedule:
+    - cron: '0 14 * * *' # 14:00 UTC daily (~22:00 Perth, after the day's rides)
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit updated public/data
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r ingest/requirements.txt
+
+      - name: Ingest rides
+        env:
+          GARMIN_TOKENSTORE_B64: ${{ secrets.GARMIN_TOKENSTORE_B64 }}
+          PRIVACY_CENTER: ${{ secrets.PRIVACY_CENTER }}
+          PRIVACY_RADIUS_M: '500'
+          PRIVACY_JITTER_M: '200'
+          RIDE_TYPES: road_biking
+          SINCE_YEARS: '4'
+        run: python ingest/garmin_ingest.py
+
+      - name: Commit updated data
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain public/data)" ]; then
+            git add public/data
+            git commit -m "Update ride data [skip ci]"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No new rides."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: ingest
+    if: needs.ingest.outputs.changed == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy-pages.yml

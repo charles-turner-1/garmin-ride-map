@@ -68,7 +68,7 @@ function addRideLayers() {
 }
 
 function fitToRides() {
-  if (!map || !rides || rides.features.length === 0) return
+  if (!map || !rides?.features?.length) return
   const bounds = new LngLatBounds()
   for (const feature of rides.features) {
     for (const coord of feature.geometry.coordinates) {
@@ -87,7 +87,11 @@ onMounted(async () => {
   await nextTick()
   if (!container.value) return
 
-  rides = await $fetch<RideCollection>(`${app.baseURL}data/rides.geojson`)
+  // Force JSON parsing: static hosts (GitHub Pages, plain file servers) may
+  // serve .geojson as octet-stream, which $fetch would otherwise return as text.
+  rides = await $fetch<RideCollection>(`${app.baseURL}data/rides.geojson`, {
+    responseType: 'json'
+  })
 
   map = new MapLibreMap({
     container: container.value,

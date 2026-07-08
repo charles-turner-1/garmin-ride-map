@@ -9,7 +9,7 @@ const { app } = useRuntimeConfig()
 // during prerender (it hits the SPA fallback route, not the asset handler).
 const { data: manifest } = await useAsyncData(
   'manifest',
-  () => $fetch<Manifest>(`${app.baseURL}data/manifest.json`),
+  () => $fetch<Manifest>(`${app.baseURL}data/manifest.json`, { responseType: 'json' }),
   { server: false }
 )
 

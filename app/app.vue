@@ -1,10 +1,13 @@
 <script setup>
+// Prefix with baseURL so the favicon resolves under a project Pages subpath.
+const { app } = useRuntimeConfig()
+
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' }
   ],
   link: [
-    { rel: 'icon', href: '/favicon.ico' }
+    { rel: 'icon', href: `${app.baseURL}favicon.ico` }
   ],
   htmlAttrs: {
     lang: 'en'
