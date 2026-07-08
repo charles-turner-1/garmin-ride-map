@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Map as MapLibreMap, LngLatBounds } from 'maplibre-gl'
+import { Map as MapLibreMap } from 'maplibre-gl'
 import type { GeoJSONSource, ExpressionSpecification } from 'maplibre-gl'
 import type { FeatureCollection, LineString } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -21,6 +21,10 @@ const STYLES = {
 }
 
 const SOURCE_ID = 'rides'
+const DEFAULT_VIEW_BOUNDS: [[number, number], [number, number]] = [
+  [115.50, -32.90], // Southwest: just south/west of Waroona.
+  [116.20, -31.30] // Northeast: just north/east of Gingin.
+]
 
 const emit = defineEmits<{ range: [{ oldest: string, newest: string }] }>()
 
@@ -92,19 +96,6 @@ function addRideLayers() {
   }
 }
 
-function fitToRides() {
-  if (!map || !rides?.features?.length) return
-  const bounds = new LngLatBounds()
-  for (const feature of rides.features) {
-    for (const coord of feature.geometry.coordinates) {
-      bounds.extend(coord as [number, number])
-    }
-  }
-  if (!bounds.isEmpty()) {
-    map.fitBounds(bounds, { padding: 64, duration: 0 })
-  }
-}
-
 onMounted(async () => {
   // Wait a tick so the template ref is bound: this is a client-only component
   // rendered inside the async (Suspense) page, where the ref can still be
@@ -135,14 +126,13 @@ onMounted(async () => {
   map = new MapLibreMap({
     container: container.value,
     style: styleUrl(),
-    center: [115.78, -32.03], // Perth metro: Yanchep (N) to Mandurah (S)
-    zoom: 8.3,
+    bounds: DEFAULT_VIEW_BOUNDS,
+    fitBoundsOptions: { padding: 48 },
     attributionControl: { compact: true }
   })
 
   map.on('load', () => {
     addRideLayers()
-    fitToRides()
   })
 
   // Swap basemap when the user toggles light/dark; re-add layers once ready.
