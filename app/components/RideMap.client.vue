@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { Map as MapLibreMap, LngLatBounds } from 'maplibre-gl'
-import type { GeoJSONSource } from 'maplibre-gl'
+import type { GeoJSONSource, ExpressionSpecification } from 'maplibre-gl'
 import type { FeatureCollection, LineString } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-type RideCollection = FeatureCollection<LineString>
+interface RideProperties {
+  id: string
+  date: string
+  distanceKm: number
+  type: string
+  // Numeric recency key (epoch ms) injected client-side after fetch (see onMounted).
+  t?: number
+}
+
+type RideCollection = FeatureCollection<LineString, RideProperties>
 
 const STYLES = {
   light: 'https://tiles.openfreemap.org/styles/positron',
@@ -13,12 +22,28 @@ const STYLES = {
 
 const SOURCE_ID = 'rides'
 
+const emit = defineEmits<{ range: [{ oldest: string, newest: string }] }>()
+
 const container = ref<HTMLDivElement>()
 const colorMode = useColorMode()
 const { app } = useRuntimeConfig()
 
 let map: MapLibreMap | undefined
 let rides: RideCollection | undefined
+
+// Data-driven colour: interpolate each ride's recency key `t` across the shared
+// blue -> mauve -> orange ramp. Domain is the oldest..newest span of the data.
+// Falls back to a solid newest colour when every ride shares one date.
+let colorExpr: ExpressionSpecification | string = RIDE_RAMP[RIDE_RAMP.length - 1]!.color
+
+function buildColorExpr(min: number, max: number) {
+  if (!(max > min)) {
+    colorExpr = RIDE_RAMP[RIDE_RAMP.length - 1]!.color
+    return
+  }
+  const stops = RIDE_RAMP.flatMap(s => [min + (max - min) * s.pos, s.color])
+  colorExpr = ['interpolate', ['linear'], ['get', 't'], ...stops] as ExpressionSpecification
+}
 
 function styleUrl() {
   return colorMode.value === 'dark' ? STYLES.dark : STYLES.light
@@ -43,7 +68,7 @@ function addRideLayers() {
       source: SOURCE_ID,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#f97316',
+        'line-color': colorExpr,
         'line-width': 6,
         'line-opacity': 0.12,
         'line-blur': 3
@@ -59,9 +84,9 @@ function addRideLayers() {
       source: SOURCE_ID,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#fb923c',
+        'line-color': colorExpr,
         'line-width': 2,
-        'line-opacity': 0.5
+        'line-opacity': 0.65
       }
     })
   }
@@ -92,6 +117,20 @@ onMounted(async () => {
   rides = await $fetch<RideCollection>(`${app.baseURL}data/rides.geojson`, {
     responseType: 'json'
   })
+
+  // Derive a numeric recency key from each ride's `date` (YYYY-MM-DD), build the
+  // colour ramp over the oldest..newest span, and sort so newer rides draw on top.
+  const features = rides.features
+  if (features.length) {
+    for (const f of features) {
+      f.properties.t = Date.parse(f.properties.date)
+    }
+    features.sort((a, b) => (a.properties.t ?? 0) - (b.properties.t ?? 0))
+    const oldest = features[0]!.properties
+    const newest = features[features.length - 1]!.properties
+    buildColorExpr(oldest.t ?? 0, newest.t ?? 0)
+    emit('range', { oldest: oldest.date, newest: newest.date })
+  }
 
   map = new MapLibreMap({
     container: container.value,
