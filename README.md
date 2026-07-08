@@ -1,64 +1,78 @@
-# Nuxt Starter Template
+# garmin-ride-map
 
-[![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
+A dead-simple personal map of every cycle ride from my Garmin history — drawn as
+overlapping translucent route lines (Strava-heatmap style) so I can see where
+I have and haven't been.
 
-Use this template to get started with [Nuxt UI](https://ui.nuxt.com) quickly.
+Built with [Nuxt 4](https://nuxt.com) + [Nuxt UI](https://ui.nuxt.com) and
+[MapLibre GL](https://maplibre.org), on the keyless
+[OpenFreeMap](https://openfreemap.org) basemap. A small Python service pulls new
+rides from Garmin on a schedule and commits the data, which auto-deploys to
+GitHub Pages.
 
-- [Live demo](https://starter-template.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/docs/getting-started/installation/nuxt)
+## How it works
 
-<a href="https://starter-template.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png">
-    <img alt="Nuxt Starter Template" src="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png" width="830" height="466">
-  </picture>
-</a>
-
-> The starter template for Vue is on https://github.com/nuxt-ui-templates/starter-vue.
-
-## Quick Start
-
-```bash [Terminal]
-npm create nuxt@latest -- -t ui
+```
+Garmin Connect ──(ingest/garmin_ingest.py, scheduled)──▶ public/data/rides.geojson
+                                                                  │
+                                          GitHub Actions build ───▶ GitHub Pages
+                                                                  │
+                                             MapLibre map (app/) ◀─┘
 ```
 
-## Deploy your own
+- **`app/`** — the map. `RideMap.client.vue` renders the routes; `pages/index.vue`
+  is a full-screen map with a small info card.
+- **`ingest/`** — the Python service that fetches rides, simplifies the GPS
+  tracks, and clips points near home for privacy. See [`ingest/README.md`](ingest/README.md).
+- **`public/data/`** — the committed `rides.geojson` + `manifest.json` the map reads.
+- **`.github/workflows/`** — `deploy` (build + publish on push) and `ingest`
+  (scheduled pull → commit → redeploy).
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=starter&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fstarter&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fstarter-dark.png&demo-url=https%3A%2F%2Fstarter-template.nuxt.dev%2F&demo-title=Nuxt%20Starter%20Template&demo-description=A%20minimal%20template%20to%20get%20started%20with%20Nuxt%20UI.)
-
-## Setup
-
-Make sure to install the dependencies:
+## Local development
 
 ```bash
 pnpm install
+pnpm dev            # http://localhost:3000
 ```
 
-## Development Server
+The repo ships with demo rides around Perth so the map works before any Garmin
+data is wired up. Lint/typecheck: `pnpm lint`, `pnpm typecheck`.
 
-Start the development server on `http://localhost:3000`:
+## Deployment (one-time setup)
+
+The site deploys to `https://charles-turner-1.github.io/garmin-ride-map/`.
+
+1. **Enable Pages:** repo *Settings → Pages → Source = GitHub Actions*.
+2. **Add repo secrets** (*Settings → Secrets and variables → Actions*):
+   - `GARMIN_TOKENSTORE_B64` — from `python ingest/save_token.py`
+   - `PRIVACY_CENTER` — your home point as `lat,lng` (kept out of the repo)
+3. Push to `main` — the `deploy` workflow builds and publishes automatically.
+
+> The base path is `/garmin-ride-map/` (set in `deploy-pages.yml`). If you rename
+> the repo or use a custom domain, update `NUXT_APP_BASE_URL` there.
+
+## Seeding real ride data
+
+Needs your Garmin login + MFA once, locally:
 
 ```bash
-pnpm dev
+cd ingest
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env                 # then set PRIVACY_CENTER (your real home point)
+python save_token.py                 # paste MFA code → copy token into ingest/.env
+python garmin_ingest.py              # pulls your rides; replaces the demo data
 ```
 
-## Production
+Commit the updated `public/data/` and push. After that the scheduled `ingest`
+workflow keeps it fresh daily using the repo secrets.
 
-Build the application for production:
+Defaults: road rides only, last 4 years, 500 m privacy radius. Tune via env vars
+(see [`ingest/README.md`](ingest/README.md)).
 
-```bash
-pnpm build
-```
+## Notes
 
-Locally preview production build:
-
-```bash
-pnpm preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
-
-## Renovate integration
-
-Install [Renovate GitHub app](https://github.com/apps/renovate/installations/select_target) on your repository and you are good to go.
+- The ingestion uses the **unofficial** Garmin Connect API — against Garmin's ToS
+  and liable to break; fine for a personal project.
+- Ride start/end points are clipped and jittered near home before anything is
+  committed, so the public repo doesn't expose your address.
