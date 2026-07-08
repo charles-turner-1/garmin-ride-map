@@ -10,6 +10,7 @@ CI). See ingest/.env.example for the full list.
 """
 from __future__ import annotations
 
+import base64
 import json
 import math
 import os
@@ -179,8 +180,9 @@ def main() -> None:
     tolerance = float(os.environ.get("SIMPLIFY_TOLERANCE", "0.0001"))
 
     from garminconnect import Garmin
+    token_json = base64.b64decode(token).decode()
     client = Garmin()
-    client.login(token)
+    client.login(token_json)  # >512 chars -> loaded as a token, not a path
 
     end = datetime.now(timezone.utc).date()
     start = end - timedelta(days=365 * since_years + 1)

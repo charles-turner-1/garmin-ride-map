@@ -1,4 +1,4 @@
 # Garmin ingestion service dependencies
-garminconnect>=0.2.25   # unofficial Garmin Connect API client (handles MFA + token refresh)
+garminconnect>=0.3.6,<0.4   # unofficial Garmin Connect API client (client.* token API; handles MFA)
 gpxpy>=1.6.2            # parse downloaded activity GPX
 shapely>=2.0.4         # geometry simplification of route lines
