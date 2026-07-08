@@ -1,12 +1,5 @@
 {
-  "processedIds": [
-    "demo-river-loop",
-    "demo-coast-cottesloe",
-    "demo-kings-park-loop",
-    "demo-south-perth-foreshore",
-    "demo-north-yanchep",
-    "demo-south-mandurah"
-  ],
-  "count": 6,
-  "lastRun": "2026-07-08T00:00:00Z"
+  "processedIds": [],
+  "count": 0,
+  "lastRun": "2026-07-08T12:01:56.722554+00:00"
 }
